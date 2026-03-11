@@ -1,5 +1,5 @@
 """
-Day2: InvestmentAccount портфель виртуальных активов + прогноз роста.
+Day2: InvestmentAccount портфель виртуальных активов + прогноз роста
 """
 
 from __future__ import annotations
@@ -28,8 +28,8 @@ class InvestmentAccount(BankAccount):
 
     def invest(self, asset_type: str, name: str, amount: float) -> None:
         """
-        Переводим часть денег со счета в виртуальный актив.
-        amount — именно сумма денег (без цен и лотов, упрощенно).
+        Переводим часть денег со счета в виртуальный актив
+        amount — именно сумма денег (без цен и лотов, упрощенно)
         """
         self._ensure_can_operate()
         value = self._validate_amount(amount)
@@ -45,15 +45,15 @@ class InvestmentAccount(BankAccount):
 
     def withdraw(self, amount: float) -> None:
         """
-        Для инвестиционного счета: снимаем только из "кэша" (баланса).
-        Активы не ликвидируем автоматически (упрощение).
+        Для инвестиционного счета: снимаем только из "кэша" (баланса)
+        Активы не ликвидируем автоматически (упрощение)
         """
         super().withdraw(amount)
 
     def project_yearly_growth(self, years: int = 1) -> Dict[str, Any]:
         """
-        Прогноз стоимости портфеля через N лет (с компаундом).
-        Возвращаем словарь с деталями.
+        Прогноз стоимости портфеля через N лет
+        Возвращаем словарь с деталями
         """
         if years < 0:
             raise InvalidOperationError("years не может быть отрицательным.")

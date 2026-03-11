@@ -1,5 +1,5 @@
 """
-Day2: SavingsAccount с минимальным остатком и ежемесячным процентом.
+Day2: SavingsAccount с минимальным остатком и ежемесячным процентом
 """
 
 from __future__ import annotations

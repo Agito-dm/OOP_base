@@ -1,5 +1,5 @@
 """
-Day2: PremiumAccount увеличенные лимиты, овердрафт, фиксированная комиссия.
+Day2: PremiumAccount увеличенные лимиты, овердрафт, фиксированная комиссия
 """
 
 from __future__ import annotations
