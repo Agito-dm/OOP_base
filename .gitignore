@@ -18,3 +18,7 @@ Thumbs.db
 
 # logs
 *.log
+
+docs/audit_day6.jsonl
+
+docs/reports/
