@@ -216,8 +216,30 @@ class ReportBuilder:
 
 
     def export_text(self, report: dict[str, Any], filename: str) -> Path:
+        def fmt(value: Any, indent: int = 0) -> list[str]:
+            pad = "  " * indent
+            if isinstance(value, dict):
+                lines = []
+                for k, v in value.items():
+                    if isinstance(v, (dict, list)):
+                        lines.append(f"{pad}{k}:")
+                        lines.extend(fmt(v, indent + 1))
+                    else:
+                        lines.append(f"{pad}{k}: {v}")
+                return lines
+            if isinstance(value, list):
+                lines = []
+                for item in value:
+                    if isinstance(item, (dict, list)):
+                        lines.append(f"{pad}-")
+                        lines.extend(fmt(item, indent + 1))
+                    else:
+                        lines.append(f"{pad}- {item}")
+                return lines
+            return [f"{pad}{value}"]
+        
         path = self.output_dir / filename
-        text = json.dumps(report, ensure_ascii=False, indent=2)
+        text = "\n".join(fmt(report))
         path.write_text(text, encoding="utf-8")
         return path
 

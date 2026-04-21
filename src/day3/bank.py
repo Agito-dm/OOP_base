@@ -156,6 +156,10 @@ class Bank:
 
         account = account_cls(owner=owner, balance=balance, currency=currency, **kwargs)
 
+        # защита от коллизий id
+        if account.id in self.accounts:
+            raise InvalidOperationError(f"Account id '{account.id}' already exists.")
+
         self.accounts[account.id] = account
         self._account_owner[account.id] = client_id
         client.account_ids.append(account.id)
@@ -163,7 +167,8 @@ class Bank:
         return account.id
 
     def close_account(self, client_id: str, account_id: str) -> None:
-        self._ensure_client_exists(client_id)
+        client = self._ensure_client_exists(client_id)
+        self._ensure_client_active(client)
         self._ensure_owns_account(client_id, account_id)
 
         acc = self.accounts.get(account_id)
@@ -173,7 +178,8 @@ class Bank:
         acc.status = AccountStatus.CLOSED
 
     def freeze_account(self, client_id: str, account_id: str) -> None:
-        self._ensure_client_exists(client_id)
+        client = self._ensure_client_exists(client_id)
+        self._ensure_client_active(client)
         self._ensure_owns_account(client_id, account_id)
 
         acc = self.accounts.get(account_id)
@@ -185,6 +191,7 @@ class Bank:
         acc.status = AccountStatus.FROZEN
 
     def unfreeze_account(self, client_id: str, account_id: str) -> None:
+        client = self._ensure_client_exists(client_id)
         self._ensure_client_exists(client_id)
         self._ensure_owns_account(client_id, account_id)
 
@@ -195,6 +202,10 @@ class Bank:
             raise AccountClosedError("Нельзя разморозить закрытый счёт.")
 
         acc.status = AccountStatus.ACTIVE
+
+    def _normalize_account_type(self, t: str) -> str:
+        t = t.strip().lower()
+        return t.removesuffix("account")
 
     def search_accounts(
         self,
@@ -213,14 +224,17 @@ class Bank:
                 continue
             if currency is not None and acc.currency != currency:
                 continue
-            if account_type is not None and acc.__class__.__name__.lower() != account_type.lower():
-                continue
+            if account_type is not None:
+                if self._normalize_account_type(acc.__class__.__name__) != self._normalize_account_type(account_type):
+                    continue
             result.append(acc)
 
         return result
 
     def deposit(self, client_id: str, account_id: str, amount: float) -> None:
-        self._ensure_client_exists(client_id)
+        client = self._ensure_client_exists(client_id)
+        self._ensure_client_active(client)
+
         self._ensure_owns_account(client_id, account_id)
         self._ensure_money_operations_allowed(client_id, "deposit")
 
@@ -228,7 +242,9 @@ class Bank:
         acc.deposit(amount)
 
     def withdraw(self, client_id: str, account_id: str, amount: float) -> None:
-        self._ensure_client_exists(client_id)
+        client = self._ensure_client_exists(client_id)
+        self._ensure_client_active(client)
+
         self._ensure_owns_account(client_id, account_id)
         self._ensure_money_operations_allowed(client_id, "withdraw")
 
