@@ -58,6 +58,9 @@ class SecureTransactionProcessor(TransactionProcessor):
 
         self.audit.log(AuditLevel.INFO, "Transaction processing started", client_id=client_id, tx_id=tx.tx_id)
 
+        record = None
+        committed = False
+
         try:
             record = self.risk.evaluate(self.bank, tx)
 
@@ -70,6 +73,7 @@ class SecureTransactionProcessor(TransactionProcessor):
                     meta={"findings": [f.code for f in record.findings]},
                 )
                 self.risk.commit(tx, record)
+                committed = True
                 raise HighRiskOperationError("High risk operation blocked by bank policy.")
 
             if record.risk_level == RiskLevel.MEDIUM:
@@ -81,11 +85,11 @@ class SecureTransactionProcessor(TransactionProcessor):
                     meta={"findings": [f.code for f in record.findings]},
                 )
 
-            # выполнение логики Day4
             self._process(tx)
 
-            # фиксация риск-историю после успешного выполнения
+            # фиксация риск-истории после успешного выполнения
             self.risk.commit(tx, record)
+            committed = True
 
             tx.status = TransactionStatus.COMPLETED
             tx.finished_at = self._now()
@@ -102,7 +106,6 @@ class SecureTransactionProcessor(TransactionProcessor):
                 tx_id=tx.tx_id,
             )
 
-            # ретраи как в Day4
             should_retry = self._is_retryable(e) and tx.attempts < self.max_attempts
             if should_retry:
                 delay = timedelta(seconds=60 * tx.attempts)
@@ -112,4 +115,7 @@ class SecureTransactionProcessor(TransactionProcessor):
 
             tx.status = TransactionStatus.FAILED
             tx.finished_at = self._now()
+            if record is not None and not committed:
+                self.risk.commit(tx, record)
+
             return tx

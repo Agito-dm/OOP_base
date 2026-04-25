@@ -192,7 +192,7 @@ class Bank:
 
     def unfreeze_account(self, client_id: str, account_id: str) -> None:
         client = self._ensure_client_exists(client_id)
-        self._ensure_client_exists(client_id)
+        self._ensure_client_active(client)
         self._ensure_owns_account(client_id, account_id)
 
         acc = self.accounts.get(account_id)
