@@ -6,7 +6,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from src.day3.bank import Bank
 from src.day4.model.transaction import Transaction, TransactionStatus

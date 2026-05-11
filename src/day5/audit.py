@@ -62,7 +62,7 @@ class AuditLog:
         self.events.append(ev)
 
         if self.file_path:
-            line = {
+            payload = {
                 "timestamp": ev.timestamp.isoformat(),
                 "level": ev.level.value,
                 "message": ev.message,
@@ -70,7 +70,8 @@ class AuditLog:
                 "tx_id": ev.tx_id,
                 "meta": ev.meta,
             }
-            self.file_path.open("a", encoding="utf-8").write(json.dumps(line, ensure_ascii=False) + "\n")
+            with self.file_path.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(payload, ensure_ascii=False) + "\n")
 
     def filter(
         self,

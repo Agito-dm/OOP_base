@@ -199,7 +199,8 @@ def print_client_history(bank: Bank, client_id: str, all_txs: list[Transaction],
     related_sorted = sorted(related, key=lambda t: t.created_at, reverse=True)[:limit]
     print(f"\n[SCENARIO] Last {len(related_sorted)} transactions for client {client_id}:")
     for tx in related_sorted:
-        print(f"  - {tx.tx_id} {tx.tx_type.value} {tx.amount:.2f} {tx.currency.value} status={tx.status.value}")
+        amt = float(tx.amount)
+        print(f"  - {tx.tx_id} {tx.tx_type.value} {amt:.2f} {tx.currency.value} status={tx.status.value}")
 
 
 def print_suspicious(risk: RiskAnalyzer, min_level: RiskLevel = RiskLevel.MEDIUM, limit: int = 10) -> None:
@@ -276,7 +277,7 @@ def main() -> None:
         run_at = tx.scheduled_for
         queue.add(tx, priority=tx.priority, run_at=run_at)
         print(
-            f"  - queued tx={tx.tx_id} type={tx.tx_type.value} amount={tx.amount:.2f} {tx.currency.value} "
+            f"  - queued tx={tx.tx_id} type={tx.tx_type.value} amount={float(tx.amount):.2f} {tx.currency.value} "
             f"prio={tx.priority} run_at={(run_at.isoformat() if run_at else clock.now().isoformat())}"
         )
 

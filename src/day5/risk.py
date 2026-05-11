@@ -88,8 +88,13 @@ class RiskAnalyzer:
         findings: list[RiskFinding] = []
         score = 0
 
+        try:
+            amount = float(tx.amount)
+        except (TypeError, ValueError):
+            amount = 0.0
+
         # Крупная сумма
-        amount_usd = self._to_usd_amount(tx.amount, tx.currency)
+        amount_usd = self._to_usd_amount(amount, tx.currency)
         if amount_usd >= self.large_amount_usd:
             findings.append(RiskFinding("LARGE_AMOUNT", f"Large amount: ~{amount_usd:.2f} USD", 2))
             score += 2

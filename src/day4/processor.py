@@ -10,12 +10,11 @@ from src.day1.exceptions.exceptions import (
     InsufficientFundsError,
     InvalidOperationError,
 )
-from src.day1.model.abstract_account import Currency
+from src.day1.model.abstract_account import Currency, AccountStatus
 from src.day2.model.premium_account import PremiumAccount
 from src.day3.bank import Bank
 from src.day4.model.transaction import Transaction, TransactionStatus, TransactionType
 from src.day4.queue import TransactionQueue
-
 
 @dataclass
 class ProcessingError:
@@ -132,6 +131,8 @@ class TransactionProcessor:
         if amount <= 0:
             raise InvalidOperationError("Сумма транзакции должна быть > 0.")
 
+        tx.amount = amount
+
         sender = self.bank.accounts.get(tx.sender_account_id)
         if not sender:
             raise InvalidOperationError("Счет отправителя не найден.")
@@ -140,13 +141,9 @@ class TransactionProcessor:
         if sender.get_account_info()["balance"] < 0 and not isinstance(sender, PremiumAccount):
             raise InvalidOperationError("Переводы запрещены при отрицательном балансе (кроме PremiumAccount).")
 
-        # Правило запрет на замороженные, закрытые счета
-        if sender.status != sender.status.__class__.ACTIVE:
-            pass
-
-        if sender.status.value == "frozen":
+        if sender.status == AccountStatus.FROZEN:
             raise AccountFrozenError("Счет отправителя заморожен.")
-        if sender.status.value == "closed":
+        if sender.status == AccountStatus.CLOSED:
             raise AccountClosedError("Счет отправителя закрыт.")
 
         # получатель
@@ -157,15 +154,16 @@ class TransactionProcessor:
             recipient = self.bank.accounts.get(tx.recipient_account_id)
             if not recipient:
                 raise InvalidOperationError("Счет получателя не найден.")
-            if recipient.status.value == "frozen":
+            if recipient.status == AccountStatus.FROZEN:
                 raise AccountFrozenError("Счет получателя заморожен.")
-            if recipient.status.value == "closed":
+            if recipient.status == AccountStatus.CLOSED:
                 raise AccountClosedError("Счет получателя закрыт.")
+        
+        tx.amount = amount
 
         # комиссия в валюте транзакции
         tx.fee = self._calc_fee(tx)
-
-        total_in_tx_currency = tx.amount + tx.fee
+        total_in_tx_currency = amount + tx.fee
 
         # дебетуем отправителя в его валюте
         debit_amount_in_sender_cur = self.convert(total_in_tx_currency, tx.currency, sender.currency)
@@ -173,5 +171,5 @@ class TransactionProcessor:
 
         # зачисление получателю, если внутренний перевод
         if recipient is not None:
-            credit_amount_in_recipient_cur = self.convert(tx.amount, tx.currency, recipient.currency)
+            credit_amount_in_recipient_cur = self.convert(amount, tx.currency, recipient.currency)
             recipient.deposit(credit_amount_in_recipient_cur)

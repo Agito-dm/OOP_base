@@ -34,6 +34,7 @@ class SecureTransactionProcessor(TransactionProcessor):
         super().__init__(*args, **kwargs)
         self.audit = audit_log
         self.risk = risk_analyzer
+        self._risk_committed_tx_ids: set[str] = set()
 
     def _is_retryable(self, exc: Exception) -> bool:
         # не повторяем
@@ -55,12 +56,9 @@ class SecureTransactionProcessor(TransactionProcessor):
         tx.started_at = self._now()
 
         client_id = self.bank._account_owner.get(tx.sender_account_id)
-
         self.audit.log(AuditLevel.INFO, "Transaction processing started", client_id=client_id, tx_id=tx.tx_id)
 
         record = None
-        committed = False
-
         try:
             record = self.risk.evaluate(self.bank, tx)
 
@@ -72,8 +70,6 @@ class SecureTransactionProcessor(TransactionProcessor):
                     tx_id=tx.tx_id,
                     meta={"findings": [f.code for f in record.findings]},
                 )
-                self.risk.commit(tx, record)
-                committed = True
                 raise HighRiskOperationError("High risk operation blocked by bank policy.")
 
             if record.risk_level == RiskLevel.MEDIUM:
@@ -87,18 +83,14 @@ class SecureTransactionProcessor(TransactionProcessor):
 
             self._process(tx)
 
-            # фиксация риск-истории после успешного выполнения
-            self.risk.commit(tx, record)
-            committed = True
-
             tx.status = TransactionStatus.COMPLETED
             tx.finished_at = self._now()
+            self.risk.commit(tx, record)
             self.audit.log(AuditLevel.INFO, "Transaction completed", client_id=record.client_id, tx_id=tx.tx_id)
             return tx
 
         except Exception as e:
             tx.decline_reason = f"{type(e).__name__}: {str(e)}"
-
             self.audit.log(
                 AuditLevel.ERROR,
                 f"{type(e).__name__}: {str(e)}",
@@ -115,7 +107,7 @@ class SecureTransactionProcessor(TransactionProcessor):
 
             tx.status = TransactionStatus.FAILED
             tx.finished_at = self._now()
-            if record is not None and not committed:
+            if record is not None:
                 self.risk.commit(tx, record)
 
             return tx

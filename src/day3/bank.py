@@ -235,20 +235,26 @@ class Bank:
         client = self._ensure_client_exists(client_id)
         self._ensure_client_active(client)
 
+        acc = self.accounts.get(account_id)
+        if not acc:
+            raise InvalidOperationError("Счёт не найден.")
+
         self._ensure_owns_account(client_id, account_id)
         self._ensure_money_operations_allowed(client_id, "deposit")
 
-        acc = self.accounts[account_id]
         acc.deposit(amount)
 
     def withdraw(self, client_id: str, account_id: str, amount: float) -> None:
         client = self._ensure_client_exists(client_id)
         self._ensure_client_active(client)
 
+        acc = self.accounts.get(account_id)
+        if not acc:
+            raise InvalidOperationError("Счёт не найден.")
+        
         self._ensure_owns_account(client_id, account_id)
         self._ensure_money_operations_allowed(client_id, "withdraw")
-
-        acc = self.accounts[account_id]
+        
         acc.withdraw(amount)
 
     # сумма баланса счетов без закрытых
