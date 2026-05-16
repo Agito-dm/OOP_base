@@ -17,3 +17,6 @@ class InvalidOperationError(Exception):
 
 class InsufficientFundsError(Exception):
     """Недостаточно средств для выполнения операции."""
+
+class QuietHoursError(InvalidOperationError):
+    """Операции запрещены в тихие часы (00:00–05:00)."""

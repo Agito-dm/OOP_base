@@ -13,6 +13,7 @@ from src.day1.exceptions.exceptions import (
     AccountFrozenError,
     InsufficientFundsError,
     InvalidOperationError,
+    QuietHoursError,
 )
 from src.day1.model.abstract_account import AccountStatus, Currency, Owner
 from src.day1.model.bank_account import BankAccount
@@ -96,7 +97,7 @@ class Bank:
         """
         if self._is_quiet_hours():
             self._mark_suspicious(client_id, action, "Попытка операции в тихие часы (00:00–05:00).")
-            raise InvalidOperationError("Операции запрещены с 00:00 до 05:00.")
+            raise QuietHoursError("Операции запрещены с 00:00 до 05:00.")
 
     # API from requirements
     def add_client(self, client: Client, password: str) -> str:

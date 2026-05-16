@@ -9,6 +9,7 @@ from src.day1.exceptions.exceptions import (
     AccountFrozenError,
     InsufficientFundsError,
     InvalidOperationError,
+    QuietHoursError,
 )
 from src.day1.model.abstract_account import Currency, AccountStatus
 from src.day2.model.premium_account import PremiumAccount
@@ -68,6 +69,8 @@ class TransactionProcessor:
 
     def _is_retryable(self, exc: Exception) -> bool:
         # frozen/closed/invalid можно повторить, например, админ разморозит, исправят ограничения
+        if isinstance(exc, QuietHoursError):
+            return False
         return isinstance(exc, (AccountFrozenError, AccountClosedError, InvalidOperationError))
 
     def process_next(self) -> Optional[Transaction]:
@@ -158,8 +161,17 @@ class TransactionProcessor:
                 raise AccountFrozenError("Счет получателя заморожен.")
             if recipient.status == AccountStatus.CLOSED:
                 raise AccountClosedError("Счет получателя закрыт.")
-        
-        tx.amount = amount
+
+        # owner ids чтобы сработали тихие часы и блокировки
+        sender_client_id = self.bank._account_owner.get(tx.sender_account_id)
+        if not sender_client_id:
+            raise InvalidOperationError("Владелец счёта отправителя не найден.")
+
+        recipient_client_id = None
+        if recipient is not None:
+            recipient_client_id = self.bank._account_owner.get(tx.recipient_account_id)
+            if not recipient_client_id:
+                raise InvalidOperationError("Владелец счёта получателя не найден.")
 
         # комиссия в валюте транзакции
         tx.fee = self._calc_fee(tx)
@@ -167,9 +179,9 @@ class TransactionProcessor:
 
         # дебетуем отправителя в его валюте
         debit_amount_in_sender_cur = self.convert(total_in_tx_currency, tx.currency, sender.currency)
-        sender.withdraw(debit_amount_in_sender_cur)
+        self.bank.withdraw(sender_client_id, tx.sender_account_id, debit_amount_in_sender_cur)
 
-        # зачисление получателю, если внутренний перевод
+        # зачисляем получателю
         if recipient is not None:
             credit_amount_in_recipient_cur = self.convert(amount, tx.currency, recipient.currency)
-            recipient.deposit(credit_amount_in_recipient_cur)
+            self.bank.deposit(recipient_client_id, tx.recipient_account_id, credit_amount_in_recipient_cur)
