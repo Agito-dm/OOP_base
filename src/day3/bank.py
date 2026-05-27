@@ -43,7 +43,12 @@ class Bank:
     - дополнительно: get_total_balance, get_clients_ranking
     """
 
-    def __init__(self, time_provider: Optional[Callable[[], datetime]] = None) -> None:
+    def __init__(
+        self, 
+        time_provider: Optional[Callable[[], datetime]] = None,
+        *,
+        base_currency: Currency = Currency.RUB,
+    ) -> None:
         self._time_provider = time_provider or datetime.now
 
         self.clients: dict[str, Client] = {}
@@ -53,6 +58,16 @@ class Bank:
         self._account_owner: dict[str, str] = {}  # account_id - client_id
 
         self.suspicious_events: list[SuspiciousEvent] = []
+
+        self.base_currency = base_currency
+
+        self._to_usd: dict[Currency, float] = {
+            Currency.USD: 1.0,
+            Currency.EUR: 1.10,
+            Currency.RUB: 1.0 / 90.0,
+            Currency.KZT: 1.0 / 450.0,
+            Currency.CNY: 1.0 / 7.2,
+        }
 
     # security helpers
     def _now(self) -> datetime:
@@ -98,6 +113,12 @@ class Bank:
         if self._is_quiet_hours():
             self._mark_suspicious(client_id, action, "Попытка операции в тихие часы (00:00–05:00).")
             raise QuietHoursError("Операции запрещены с 00:00 до 05:00.")
+    
+    def _convert(self, amount: float, from_cur: Currency, to_cur: Currency) -> float:
+        if from_cur == to_cur:
+            return float(amount)
+        usd = float(amount) * self._to_usd[from_cur]
+        return usd / self._to_usd[to_cur]
 
     # API from requirements
     def add_client(self, client: Client, password: str) -> str:
@@ -259,18 +280,21 @@ class Bank:
         acc.withdraw(amount)
 
     # сумма баланса счетов без закрытых
-    def get_total_balance(self, *, include_closed: bool = False) -> float:
+    def get_total_balance(self, *, include_closed: bool = False, in_currency: Currency | None = None) -> float:
+        cur = in_currency or self.base_currency
         total = 0.0
         for acc in self.accounts.values():
             if not include_closed and acc.status == AccountStatus.CLOSED:
                 continue
-            total += acc.get_account_info()["balance"]
+            bal = float(acc.get_account_info()["balance"])
+            total += self._convert(bal, acc.currency, cur)
         return float(total)
 
-    def get_clients_ranking(self) -> list[tuple[str, float]]:
+    def get_clients_ranking(self, *, in_currency: Currency | None = None) -> list[tuple[str, float]]:
         """
         Рейтинг клиентов по суммарному балансу их счетов (без закрытых).
         """
+        cur = in_currency or self.base_currency
         sums: dict[str, float] = {cid: 0.0 for cid in self.clients.keys()}
 
         for acc_id, acc in self.accounts.items():
@@ -278,6 +302,7 @@ class Bank:
                 continue
             cid = self._account_owner.get(acc_id)
             if cid:
-                sums[cid] += acc.get_account_info()["balance"]
+                bal = float(acc.get_account_info()["balance"])
+                sums[cid] += self._convert(bal, acc.currency, cur)
 
         return sorted(sums.items(), key=lambda x: x[1], reverse=True)

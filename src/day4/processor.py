@@ -47,7 +47,6 @@ class TransactionProcessor:
 
         self.error_log: List[ProcessingError] = []
 
-        # простая таблица курсов к USD
         self._to_usd: Dict[Currency, float] = {
             Currency.USD: 1.0,
             Currency.EUR: 1.10,
@@ -68,10 +67,9 @@ class TransactionProcessor:
         return 0.0
 
     def _is_retryable(self, exc: Exception) -> bool:
-        # frozen/closed/invalid можно повторить, например, админ разморозит, исправят ограничения
         if isinstance(exc, QuietHoursError):
             return False
-        return isinstance(exc, (AccountFrozenError, AccountClosedError, InvalidOperationError))
+        return isinstance(exc, AccountFrozenError)
 
     def process_next(self) -> Optional[Transaction]:
         tx = self.queue.pop_next_ready()
