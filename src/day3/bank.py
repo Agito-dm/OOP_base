@@ -10,8 +10,6 @@ from typing import Callable, Optional, Type
 
 from src.day1.exceptions.exceptions import (
     AccountClosedError,
-    AccountFrozenError,
-    InsufficientFundsError,
     InvalidOperationError,
     QuietHoursError,
 )
@@ -191,22 +189,25 @@ class Bank:
     def close_account(self, client_id: str, account_id: str) -> None:
         client = self._ensure_client_exists(client_id)
         self._ensure_client_active(client)
-        self._ensure_owns_account(client_id, account_id)
 
         acc = self.accounts.get(account_id)
         if not acc:
             raise InvalidOperationError("Счёт не найден.")
+
+        self._ensure_owns_account(client_id, account_id)
 
         acc.status = AccountStatus.CLOSED
 
     def freeze_account(self, client_id: str, account_id: str) -> None:
         client = self._ensure_client_exists(client_id)
         self._ensure_client_active(client)
-        self._ensure_owns_account(client_id, account_id)
 
         acc = self.accounts.get(account_id)
         if not acc:
             raise InvalidOperationError("Счёт не найден.")
+
+        self._ensure_owns_account(client_id, account_id)
+
         if acc.status == AccountStatus.CLOSED:
             raise AccountClosedError("Нельзя заморозить закрытый счёт.")
 
@@ -215,11 +216,13 @@ class Bank:
     def unfreeze_account(self, client_id: str, account_id: str) -> None:
         client = self._ensure_client_exists(client_id)
         self._ensure_client_active(client)
-        self._ensure_owns_account(client_id, account_id)
 
         acc = self.accounts.get(account_id)
         if not acc:
             raise InvalidOperationError("Счёт не найден.")
+
+        self._ensure_owns_account(client_id, account_id)
+
         if acc.status == AccountStatus.CLOSED:
             raise AccountClosedError("Нельзя разморозить закрытый счёт.")
 

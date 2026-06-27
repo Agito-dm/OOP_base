@@ -2,7 +2,7 @@ import pytest
 from datetime import datetime
 
 from src.day1.exceptions.exceptions import InvalidOperationError, AccountFrozenError
-from src.day1.model.abstract_account import Currency, AccountStatus
+from src.day1.model.abstract_account import Currency
 from src.day3.bank import Bank
 from src.day3.model.client import Client, ClientStatus
 
@@ -39,6 +39,39 @@ def test_open_accounts_freeze_and_withdraw_blocked() -> None:
     # withdraw через банк дергает acc.withdraw, а там будет AccountFrozenError
     with pytest.raises(AccountFrozenError):
         bank.withdraw(cid, acc_id, 100)
+
+
+@pytest.mark.parametrize("operation", ["close_account", "freeze_account", "unfreeze_account"])
+def test_account_state_operations_bad_id_do_not_mark_suspicious(operation: str) -> None:
+    bank = Bank()
+    client = Client(full_name="Bad Id User", age=30, contacts={"email": "bad-id@x.com"})
+    cid = bank.add_client(client, password="pass")
+
+    before = len(bank.suspicious_events)
+
+    with pytest.raises(InvalidOperationError, match="Счёт не найден."):
+        getattr(bank, operation)(cid, "bad-id")
+
+    assert len(bank.suspicious_events) == before
+
+
+@pytest.mark.parametrize("operation", ["close_account", "freeze_account", "unfreeze_account"])
+def test_account_state_operations_foreign_existing_account_mark_suspicious(operation: str) -> None:
+    bank = Bank()
+    owner = Client(full_name="Owner User", age=30, contacts={"email": "owner@x.com"})
+    intruder = Client(full_name="Intruder User", age=31, contacts={"email": "intruder@x.com"})
+    owner_id = bank.add_client(owner, password="pass")
+    intruder_id = bank.add_client(intruder, password="pass")
+    owner_acc_id = bank.open_account(owner_id, account_type="bank", balance=100)
+
+    before = len(bank.suspicious_events)
+
+    with pytest.raises(InvalidOperationError, match="Счёт не принадлежит клиенту."):
+        getattr(bank, operation)(intruder_id, owner_acc_id)
+
+    assert len(bank.suspicious_events) == before + 1
+    assert bank.suspicious_events[-1].client_id == intruder_id
+    assert bank.suspicious_events[-1].action == "access_account"
 
 
 def test_quiet_hours_block_money_operations_and_mark_suspicious() -> None:
