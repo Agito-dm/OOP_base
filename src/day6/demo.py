@@ -63,8 +63,12 @@ def create_accounts(bank: Bank, client_ids: list[str], total_accounts: int) -> l
         acc_type = random.choice(types)
         cur = pick_currency()
 
-        # Балансы иногда отрицательные
-        balance = random.choice([random.uniform(0, 5000), random.uniform(50, 15000), random.uniform(-200, 200)])
+        # Стартовые балансы всегда валидные
+        balance = random.choice([
+            random.uniform(0, 5000),
+            random.uniform(50, 15000),
+            random.uniform(0, 200),
+        ])
 
         kwargs = {}
         if acc_type == "savings":

@@ -38,10 +38,18 @@ class BankAccount(AbstractAccount):
         if not account_id:
             account_id = uuid.uuid4().hex[:8]
 
+        try:
+            balance_value = float(balance)
+        except (TypeError, ValueError):
+            raise InvalidOperationError("Баланс должен быть числом.")
+
+        if balance_value < 0:
+            raise InvalidOperationError("Баланс не может быть отрицательным.")
+
         super().__init__(
             account_id=account_id,
             owner=owner,
-            balance=balance,
+            balance=balance_value,
             status=status,
             currency=currency,
         )

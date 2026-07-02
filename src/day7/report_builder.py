@@ -131,7 +131,14 @@ class ReportBuilder:
         related_txs_sorted = sorted(related_txs, key=lambda t: t.created_at, reverse=True)
         tx_status = Counter(tx.status.value for tx in related_txs)
 
-        total_balance = sum(float(a.get_account_info()["balance"]) for a in accounts)
+        balance_by_currency: dict[str, float] = defaultdict(float)
+        total_balance = 0.0
+        total_balance_currency = self.bank.base_currency
+
+        for account in accounts:
+            balance = float(account.get_account_info()["balance"])
+            balance_by_currency[account.currency.value] += balance
+            total_balance += self.bank._convert(balance, account.currency, total_balance_currency)
 
         risk_profile = self.risk.client_risk_profile(client_id) if self.risk else None
 
@@ -159,6 +166,8 @@ class ReportBuilder:
                     for a in accounts
                 ],
                 "total_balance": float(total_balance),
+                "total_balance_currency": total_balance_currency.value,
+                "balance_by_currency": dict(balance_by_currency),
             },
             "transactions": {
                 "count": len(related_txs),

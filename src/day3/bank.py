@@ -282,6 +282,40 @@ class Bank:
         
         acc.withdraw(amount)
 
+    def _transfer_between_accounts(
+        self,
+        sender_client_id: str,
+        sender_account_id: str,
+        recipient_client_id: str,
+        recipient_account_id: str,
+        debit_amount: float,
+        credit_amount: float,
+    ) -> None:
+        """
+        Атомарный внутренний перевод между двумя счетами.
+
+        Если списание прошло, но зачисление упало, балансы возвращаются
+        в состояние до перевода.
+        """
+        sender = self.accounts.get(sender_account_id)
+        if not sender:
+            raise InvalidOperationError("Счёт не найден.")
+
+        recipient = self.accounts.get(recipient_account_id)
+        if not recipient:
+            raise InvalidOperationError("Счёт не найден.")
+
+        sender_balance_before = float(sender.get_account_info()["balance"])
+        recipient_balance_before = float(recipient.get_account_info()["balance"])
+
+        try:
+            self.withdraw(sender_client_id, sender_account_id, debit_amount)
+            self.deposit(recipient_client_id, recipient_account_id, credit_amount)
+        except Exception:
+            sender._balance = sender_balance_before
+            recipient._balance = recipient_balance_before
+            raise
+
     # сумма баланса счетов без закрытых
     def get_total_balance(self, *, include_closed: bool = False, in_currency: Currency | None = None) -> float:
         cur = in_currency or self.base_currency

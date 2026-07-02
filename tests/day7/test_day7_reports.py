@@ -87,3 +87,25 @@ def test_day7_reports_and_charts(tmp_path) -> None:
 
     p_risk = rb.export_to_json(risk_report, "risk_report.json")
     assert p_risk.exists() and p_risk.stat().st_size > 0
+
+
+def test_client_report_converts_total_balance_and_keeps_currency_breakdown(tmp_path) -> None:
+    bank = Bank()
+
+    client = Client(full_name="Currency Client", age=30, contacts={"email": "currency@x.com"})
+    cid = bank.add_client(client, password="pass")
+
+    bank.open_account(cid, account_type="bank", balance=100, currency=Currency.USD)
+    bank.open_account(cid, account_type="bank", balance=100, currency=Currency.RUB)
+
+    rb = ReportBuilder(bank, output_dir=tmp_path)
+    report = rb.build_client_report(cid)
+
+    client_block = report["client"]
+
+    assert client_block["total_balance"] == pytest.approx(9100.0)
+    assert client_block["total_balance_currency"] == "RUB"
+    assert client_block["balance_by_currency"] == {
+        "USD": 100.0,
+        "RUB": 100.0,
+    }

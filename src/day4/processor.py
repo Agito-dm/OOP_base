@@ -177,9 +177,20 @@ class TransactionProcessor:
 
         # дебетуем отправителя в его валюте
         debit_amount_in_sender_cur = self.convert(total_in_tx_currency, tx.currency, sender.currency)
-        self.bank.withdraw(sender_client_id, tx.sender_account_id, debit_amount_in_sender_cur)
 
-        # зачисляем получателю
         if recipient is not None:
+            if recipient_client_id is None:
+                raise InvalidOperationError("Владелец счёта получателя не найден.")
+
             credit_amount_in_recipient_cur = self.convert(amount, tx.currency, recipient.currency)
-            self.bank.deposit(recipient_client_id, tx.recipient_account_id, credit_amount_in_recipient_cur)
+
+            self.bank._transfer_between_accounts(
+                sender_client_id=sender_client_id,
+                sender_account_id=tx.sender_account_id,
+                recipient_client_id=recipient_client_id,
+                recipient_account_id=tx.recipient_account_id,
+                debit_amount=debit_amount_in_sender_cur,
+                credit_amount=credit_amount_in_recipient_cur,
+            )
+        else:
+            self.bank.withdraw(sender_client_id, tx.sender_account_id, debit_amount_in_sender_cur)

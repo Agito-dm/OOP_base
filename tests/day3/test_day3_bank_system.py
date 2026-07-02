@@ -105,3 +105,31 @@ def test_total_balance_and_ranking() -> None:
 
     ranking = bank.get_clients_ranking()
     assert ranking[0][0] == id2  # Bob выше, баланс больше
+
+
+def test_open_account_rejects_negative_initial_balance() -> None:
+    bank = Bank()
+    client = Client(full_name="Negative User", age=30, contacts={"email": "negative@x.com"})
+    cid = bank.add_client(client, password="pass")
+
+    with pytest.raises(InvalidOperationError, match="Баланс"):
+        bank.open_account(cid, account_type="bank", balance=-10, currency=Currency.RUB)
+
+
+def test_open_account_rejects_non_numeric_initial_balance() -> None:
+    bank = Bank()
+    client = Client(full_name="Bad Balance User", age=30, contacts={"email": "bad-balance@x.com"})
+    cid = bank.add_client(client, password="pass")
+
+    with pytest.raises(InvalidOperationError, match="Баланс"):
+        bank.open_account(cid, account_type="bank", balance="not-a-number", currency=Currency.RUB)
+
+
+def test_open_account_allows_zero_initial_balance() -> None:
+    bank = Bank()
+    client = Client(full_name="Zero User", age=30, contacts={"email": "zero@x.com"})
+    cid = bank.add_client(client, password="pass")
+
+    acc_id = bank.open_account(cid, account_type="bank", balance=0, currency=Currency.RUB)
+
+    assert bank.accounts[acc_id].get_account_info()["balance"] == 0.0
